@@ -9,14 +9,10 @@ ArduinoLEDMatrix matrix;
 
 // UUIDs --------------------------------------------------------------------------------------------------------------
 const char * deviceServiceUuid = "19b10000-e8f2-537e-4f6c-d104768a1214";
-const char * deviceServiceReadColorUuid = "19b10001-e8f2-537e-4f6c-d104768a1215";
-const char * deviceServiceWriteColorUuid = "19b10001-e8f2-537e-4f6c-d104768a1216";
 const char * deviceServiceCharacteristicUuid = "19b10001-e8f2-537e-4f6c-d104768a1217";
 
 // Service + Charactaristics ------------------------------------------------------------------------------------------
 BLEService servoService(deviceServiceUuid);
-BLEStringCharacteristic deviceServiceReadColor(deviceServiceReadColorUuid, BLERead, 6);
-BLEStringCharacteristic deviceServiceWriteColor(deviceServiceWriteColorUuid, BLEWrite, 6);
 BLEStringCharacteristic deviceServiceNotifyColor(deviceServiceCharacteristicUuid, BLENotify, 6);
 
 // State Variables -----------------------------------------------------------------------------------------------------
@@ -51,12 +47,9 @@ void initBLE() {
   }
 
   BLE.setAdvertisedService(servoService);
-  servoService.addCharacteristic(deviceServiceReadColor);
-  servoService.addCharacteristic(deviceServiceWriteColor);
   servoService.addCharacteristic(deviceServiceNotifyColor);
   BLE.addService(servoService);
 
-  deviceServiceReadColor.writeValue("O");
   deviceServiceNotifyColor.setValue("R");
   BLE.advertise();
 }
@@ -74,35 +67,26 @@ void loop() {
   
   if(central) {
     Serial.println("CONNECTED ");
-    drawMessage("RDY");
+    drawMessage("SUB");
 
-    while (central.connected()) {
-      if(deviceServiceWriteColor.written()) {
-        String value = deviceServiceWriteColor.value();
-        Serial.println(value);
-
-        if(value == "START") {
-          isNotifying = true;
-        }
-      }
-      if(isNotifying) {
-        int index = counter % colorArrayLength;
-        
-        switch(index) {
-          case 0: 
-            drawMessage(" R");
-            break;
-          case 1:
-            drawMessage(" G");
-            break;
-          case 2:
-            drawMessage(" B");
-            break;
-        } 
-        deviceServiceNotifyColor.setValue(allColors[index]);
-        counter++;
-        delay(500);
+    while (central.connected() && deviceServiceNotifyColor.subscribed()) {
+      int index = counter % colorArrayLength;
+      
+      deviceServiceNotifyColor.setValue(allColors[index]);
+      
+      switch(index) {
+        case 0: 
+          drawMessage(" R ");
+          break;
+        case 1:
+          drawMessage(" G ");
+          break;
+        case 2:
+          drawMessage(" B ");
+          break;
       } 
+      counter++;
+      delay(500);
     }
   }
 }
